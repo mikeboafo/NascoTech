@@ -1,0 +1,62 @@
+// Per the problem i am creating backend API endpoints using Spring Boot to fetch ,
+//process and return transaction data using the given parameter in the question
+
+Define endpoints: Get /api/v1/transactions with query parameters:
+  dateFrom, dateTo, userId, service, status, reference, offset (default 0), limit(default 10)
+
+  FUNCTION fetchAndProcessFinancialTransactions(dateFrom, dateTo, userId, service, status, reference, pageable):
+      // Step 1: Retrieve paginated transactions
+      transactionPage = repository.findFilteredTransactions(dateFrom, dateTo, userId, service, status, reference, pageable)
+
+      // Step 2: Convert transactions to a reactive stream
+      paymentsFlux = CREATE FLUX from transactionPage.content
+                     FOR EACH transaction IN transactionPage.content
+                     DO
+                         payment = paymentService.retrieveFinancialTransaction(transaction.paymentId)
+                         RETURN assemblePaymentResponse(transaction, payment)
+
+      // Step 3: Collect and process the results
+      RETURN paymentsFlux.collectList()
+             SORT payments BY paymentId DESCENDING
+             CREATE DataListPaymentResponse(payments, buildLinks(transactionPage))
+
+FUNCTION assemblePaymentResponse(transaction, payment):
+    IF transaction IS NULL:
+        THROW "Transaction cannot be null"
+    IF payment IS NULL:
+        THROW "Payment cannot be null"
+
+    CREATE PaymentResponse
+    SET PaymentResponse.transactionDetails = transaction
+    SET PaymentResponse.paymentDetails = payment
+
+    RETURN PaymentResponse
+
+FUNCTION buildLinks(transactionPage):
+    NEXT_LINK = "/api/financial-transactions?page=" + (transactionPage.number + 1)
+    PREVIOUS_LINK = IF transactionPage.number > 0 THEN "/api/financial-transactions?page=" + (transactionPage.number - 1) ELSE NULL
+    SELF_LINK = "/api/financial-transactions?page=" + transactionPage.number
+
+    RETURN HATEOASLinks(NEXT_LINK, PREVIOUS_LINK, SELF_LINK)
+
+CLASS PaymentResponse:
+    ATTRIBUTE transactionDetails
+    ATTRIBUTE paymentDetails
+
+CLASS DataListPaymentResponse:
+    ATTRIBUTE payments
+    ATTRIBUTE links
+
+CLASS HATEOASLinks:
+    ATTRIBUTE next
+    ATTRIBUTE previous
+    ATTRIBUTE self
+
+CLASS FinancialTransaction:
+    ATTRIBUTE id
+    ATTRIBUTE paymentId
+    ATTRIBUTE userId
+    ATTRIBUTE service
+    ATTRIBUTE status
+    ATTRIBUTE reference
+    ATTRIBUTE date
