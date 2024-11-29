@@ -1,6 +1,6 @@
-package com.example.project.Service;
+package com.example.project.service;
 
-import com.example.project.Models.Payment;
+import com.example.project.models.Payment;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;

@@ -1,4 +1,4 @@
-package com.example.project.Models;
+package com.example.project.models;
 
 public class HATEOASLinks {
     private String next;
